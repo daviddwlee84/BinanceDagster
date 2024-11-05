@@ -7,20 +7,23 @@ from .utilities import (
 )
 
 
-# NOTE: this is the simplest hard-coded show case, and need to be generalized
 @asset
-def get_1m_btc_klines() -> None:
+def btc_klines_1m() -> None:
+    """
+    BTC 1-minute interval K-lines
+
+    NOTE: this is the simplest hard-coded show case, and need to be generalized
+    """
+    path = "data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2024-11-02"
     # URLs to download
-    file_url = "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2024-11-02.zip"
+    file_url = f"https://data.binance.vision/{path}.zip"
     checksum_url = file_url + ".CHECKSUM"
 
     # Start the download, verification, and decompression process
     expected_checksum = download_checksum_file(checksum_url)
 
     retries = 3
-    extract_to = (
-        "data/binance/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2024-11-02.csv"
-    )
+    extract_to = f"data/binance/{path}.csv"
 
     for attempt in range(retries):
         print(f"Attempt {attempt + 1} of {retries}...")
