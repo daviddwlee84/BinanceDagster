@@ -45,3 +45,10 @@ Once your Dagster Daemon is running, you can start turning on schedules and sens
 The easiest way to deploy your Dagster project is to use Dagster Cloud.
 
 Check out the [Dagster Cloud Documentation](https://docs.dagster.cloud) to learn more.
+
+---
+
+## Binance Public Data
+
+- [Binance Data Collection](https://data.binance.vision/)
+- [binance/binance-public-data: Details on how to get Binance public data](https://github.com/binance/binance-public-data)
