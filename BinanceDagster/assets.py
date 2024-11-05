@@ -1,20 +1,25 @@
-from dagster import asset
+from dagster import asset, AssetExecutionContext
+import os
 from .utilities import (
     download_checksum_file,
     download_file_to_memory,
     verify_checksum,
     decompress_zip_in_memory,
 )
+from .partitions import daily_partition
 
 
-@asset
-def btc_klines_1m_daily() -> None:
+@asset(partitions_def=daily_partition)
+def btc_klines_1m_daily(context: AssetExecutionContext) -> None:
     """
     BTC 1-minute interval K-lines
 
     NOTE: this is the simplest hard-coded show case, and need to be generalized
     """
-    path = "data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-2024-11-02"
+    # TODO: the latest file might be only available 2 days later
+    partition_date_str = context.partition_key
+
+    path = f"data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-{partition_date_str}"
     # URLs to download
     file_url = f"https://data.binance.vision/{path}.zip"
     checksum_url = file_url + ".CHECKSUM"
@@ -23,10 +28,11 @@ def btc_klines_1m_daily() -> None:
     expected_checksum = download_checksum_file(checksum_url)
 
     retries = 3
-    extract_to = f"data/binance/{path}.csv"
+    # NOTE: somehow zipfile will unzip into folder
+    extract_to = os.path.dirname(f"data/binance/{path}.csv")
 
     for attempt in range(retries):
-        print(f"Attempt {attempt + 1} of {retries}...")
+        context.log.info(f"Attempt {attempt + 1} of {retries}...")
 
         # Download the ZIP file in memory
         file_data = download_file_to_memory(file_url)
@@ -42,4 +48,4 @@ def btc_klines_1m_daily() -> None:
                     f"Failed to verify {file_url} after {retries} attempts."
                 )
             else:
-                print("Checksum failed, retrying download...")
+                context.log.warning("Checksum failed, retrying download...")

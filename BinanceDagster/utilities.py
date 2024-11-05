@@ -33,6 +33,9 @@ def verify_checksum(file_data: io.BytesIO, expected_checksum: str) -> bool:
 
 
 def decompress_zip_in_memory(file_data: io.BytesIO, extract_to: str = ".") -> None:
+    """
+    NOTE: this will extract "entire folder", so you might want to simply provide extract_to as a directory path
+    """
     with zipfile.ZipFile(file_data, "r") as zip_ref:
         zip_ref.extractall(extract_to)
     print(f"Decompressed file to {extract_to}.")
