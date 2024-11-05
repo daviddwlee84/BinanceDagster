@@ -4,6 +4,14 @@ This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster proje
 
 ## Getting started
 
+### Directly Run
+
+```bash
+dagster dev
+```
+
+### Run Project as a Package
+
 First, install your Dagster code location as a Python package. By using the --editable flag, pip will install your Python package in ["editable mode"](https://pip.pypa.io/en/latest/topics/local-project-installs/#editable-installs) so that as you develop, local code changes will automatically apply.
 
 ```bash
@@ -45,6 +53,10 @@ Once your Dagster Daemon is running, you can start turning on schedules and sens
 The easiest way to deploy your Dagster project is to use Dagster Cloud.
 
 Check out the [Dagster Cloud Documentation](https://docs.dagster.cloud) to learn more.
+
+## Example
+
+- [dagster-io/project-dagster-university: an ephemeral project repo for the DU Dagster project](https://github.com/dagster-io/project-dagster-university/)
 
 ---
 
