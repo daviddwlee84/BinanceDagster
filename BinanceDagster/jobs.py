@@ -1,8 +1,8 @@
 from dagster import AssetSelection, define_asset_job
 
-btc_klines_1m = AssetSelection.assets("btc_klines_1m")
+btc_klines_1m_daily = AssetSelection.assets("btc_klines_1m_daily")
 
-klines_update_job = define_asset_job(
-    name="klines_update_job",
-    selection=btc_klines_1m,
+daily_update_job = define_asset_job(
+    name="daily_update_job",
+    selection=btc_klines_1m_daily,
 )

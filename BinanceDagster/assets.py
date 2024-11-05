@@ -8,7 +8,7 @@ from .utilities import (
 
 
 @asset
-def btc_klines_1m() -> None:
+def btc_klines_1m_daily() -> None:
     """
     BTC 1-minute interval K-lines
 
