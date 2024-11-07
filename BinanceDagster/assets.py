@@ -1,4 +1,4 @@
-from dagster import asset, AssetExecutionContext
+from dagster import asset, AssetExecutionContext, AssetSpec
 import os
 import pandas as pd
 from .utilities import (
@@ -11,7 +11,17 @@ from .partitions import daily_partition
 from .configs import AdhocRequestConfig
 
 
-@asset(partitions_def=daily_partition)
+# https://github.com/dagster-io/dagster/discussions/20054
+# https://github.com/dagster-io/dagster/discussions/18211
+# BUG: somehow it doesn't have "partition" tab
+raw_btc_klines_1m_daily = AssetSpec(
+    key="raw_btc_klines_1m_daily",
+    partitions_def=daily_partition,
+    description="Raw BTC 1-minute interval K-lines from Binance (external asset).",
+)
+
+
+@asset(partitions_def=daily_partition, deps=[raw_btc_klines_1m_daily])
 def btc_klines_1m_daily(context: AssetExecutionContext) -> None:
     """
     BTC 1-minute interval K-lines
