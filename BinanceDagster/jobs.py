@@ -1,4 +1,5 @@
-from dagster import AssetSelection, define_asset_job
+from dagster import AssetSelection, define_asset_job, RunConfig
+from .configs import AdhocRequestConfig
 from .partitions import daily_partition
 
 # Regular Jobs
@@ -18,14 +19,21 @@ adhoc_btc_klines_1m = AssetSelection.assets("adhoc_btc_klines_1m")
 adhoc_request_job = define_asset_job(
     name="adhoc_request_job",
     selection=adhoc_btc_klines_1m,
-    config={
-        "ops": {
-            "adhoc_btc_klines_1m": {
-                "config": {
-                    "start_date": "2024-11-01",
-                    "end_date": "2024-11-02",
-                }
-            }
+    # config={
+    #     "ops": {
+    #         "adhoc_btc_klines_1m": {
+    #             "config": {
+    #                 "start_date": "2024-11-01",
+    #                 "end_date": "2024-11-02",
+    #             }
+    #         }
+    #     }
+    # },
+    config=RunConfig(
+        ops={
+            "adhoc_btc_klines_1m": AdhocRequestConfig(
+                start_date="2024-11-01", end_date="2024-11-02"
+            )
         }
-    },
+    ),
 )
