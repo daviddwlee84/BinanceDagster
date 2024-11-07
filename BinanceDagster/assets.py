@@ -4,6 +4,7 @@ from dagster import (
     AssetSpec,
     MaterializeResult,
     MetadataValue,
+    MultiPartitionKey,
 )
 import os
 import pandas as pd
@@ -13,7 +14,7 @@ from .utilities import (
     verify_checksum,
     decompress_zip_in_memory,
 )
-from .partitions import daily_partition
+from .partitions import daily_partition, date_symbol_partition
 from .configs import AdhocRequestConfig
 import base64
 import plotly.graph_objects as go
@@ -29,10 +30,15 @@ raw_btc_klines_1m_daily = AssetSpec(
     key="raw_btc_klines_1m_daily",
     partitions_def=daily_partition,
     description="Raw BTC 1-minute interval K-lines from Binance (external asset).",
+    group_name="binance_source",
 )
 
 
-@asset(partitions_def=daily_partition, deps=[raw_btc_klines_1m_daily])
+@asset(
+    partitions_def=daily_partition,
+    deps=[raw_btc_klines_1m_daily],
+    group_name="offline_clone",
+)
 def btc_klines_1m_daily(context: AssetExecutionContext) -> MaterializeResult:
     """
     BTC 1-minute interval K-lines
@@ -77,7 +83,69 @@ def btc_klines_1m_daily(context: AssetExecutionContext) -> MaterializeResult:
     return MaterializeResult(metadata={"Number of records": MetadataValue.int(len(df))})
 
 
-@asset(deps=["btc_klines_1m_daily"])
+raw_trade_daily = AssetSpec(
+    key="raw_trade_daily",
+    partitions_def=date_symbol_partition,
+    description="Raw Trades from Binance (external asset).",
+    group_name="binance_source",
+)
+
+
+@asset(
+    partitions_def=date_symbol_partition,
+    deps=[raw_trade_daily],
+    group_name="offline_clone",
+)
+def trade_daily(context: AssetExecutionContext) -> MaterializeResult:
+    """
+    Trade
+    """
+    if isinstance(context.partition_key, MultiPartitionKey):
+        context.log.info(
+            context.partition_key.keys_by_dimension
+        )  # {'date': '2024-11-06', 'symbol': 'BTCUSDT'}
+        partition_date_str = context.partition_key.keys_by_dimension["date"]
+        symbol = context.partition_key.keys_by_dimension["symbol"]
+    else:
+        context.log.info(context.partition_key)  # 2024-11-06|BTCUSDT
+        partition_date_str, symbol = context.partition_key.split("|")
+
+    path = f"data/spot/daily/trades/{symbol}/{symbol}-trades-{partition_date_str}"
+    # URLs to download
+    file_url = f"https://data.binance.vision/{path}.zip"
+    checksum_url = file_url + ".CHECKSUM"
+
+    # Start the download, verification, and decompression process
+    expected_checksum = download_checksum_file(checksum_url)
+
+    retries = 3
+    # NOTE: somehow zipfile will unzip into folder
+    extract_to = os.path.dirname(f"data/binance/{path}.csv")
+
+    for attempt in range(retries):
+        context.log.info(f"Attempt {attempt + 1} of {retries}...")
+
+        # Download the ZIP file in memory
+        file_data = download_file_to_memory(file_url)
+
+        # Verify checksum
+        if verify_checksum(file_data, expected_checksum):
+            # If checksum is correct, decompress the file
+            decompress_zip_in_memory(file_data, extract_to)
+            break
+        else:
+            if attempt == retries - 1:
+                raise ValueError(
+                    f"Failed to verify {file_url} after {retries} attempts."
+                )
+            else:
+                context.log.warning("Checksum failed, retrying download...")
+
+    df = pd.read_csv(f"data/binance/{path}.csv", header=None)
+    return MaterializeResult(metadata={"Number of records": MetadataValue.int(len(df))})
+
+
+@asset(deps=["btc_klines_1m_daily"], group_name="adhoc")
 def adhoc_btc_klines_1m(
     context: AssetExecutionContext, config: AdhocRequestConfig
 ) -> MaterializeResult:
