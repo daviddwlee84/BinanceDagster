@@ -7,7 +7,18 @@ This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster proje
 ### Directly Run
 
 ```bash
-dagster dev
+pip install -r requirements.txt
+```
+
+```bash
+# https://docs.dagster.io/guides/running-dagster-locally
+# https://docs.dagster.io/deployment/dagster-instance
+DAGSTER_HOME="$(pwd)/dagster" dagster dev
+```
+
+```powershell
+# https://stackoverflow.com/questions/1420719/powershell-setting-an-environment-variable-for-a-single-command-only
+$env:DAGSTER_HOME="$(pwd)\dagster"; dagster dev
 ```
 
 ### Run Project as a Package
@@ -29,6 +40,8 @@ Open http://localhost:3000 with your browser to see the project.
 You can start writing assets in `BinanceDagster/assets.py`. The assets are automatically loaded into the Dagster code location as you define them.
 
 ## Development
+
+> Consider if we need `$DAGSTER_HOME/dagster.yaml`
 
 ### Adding new Python dependencies
 
