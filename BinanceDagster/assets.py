@@ -1,10 +1,14 @@
 from dagster import (
     asset,
+    asset_check,
     AssetExecutionContext,
     AssetSpec,
     MaterializeResult,
     MetadataValue,
     MultiPartitionKey,
+    AssetCheckResult,
+    AutomationCondition,
+    materialize,
 )
 import os
 import pandas as pd
@@ -33,10 +37,24 @@ raw_btc_klines_1m_daily = AssetSpec(
     group_name="binance_source",
 )
 
+# TODO: add asset_check when partition feature is done...
+# https://docs.dagster.io/concepts/assets/asset-checks
+# https://github.com/dagster-io/dagster/discussions/17194
+# https://github.com/dagster-io/dagster/issues/17005
+# @asset_check(asset=raw_btc_klines_1m_daily)
+# def online_existence() -> AssetCheckResult:
+#     return AssetCheckResult(passed=)
+
+
+# Auto-materialize upstream when downstream needed
+# https://github.com/dagster-io/dagster/discussions/20426
+
 
 @asset(
     partitions_def=daily_partition,
     deps=[raw_btc_klines_1m_daily],
+    # https://docs.dagster.io/concepts/automation/declarative-automation
+    # automation_condition=AutomationCondition.on_missing(),
     group_name="offline_clone",
 )
 def btc_klines_1m_daily(context: AssetExecutionContext) -> MaterializeResult:
@@ -157,10 +175,18 @@ def adhoc_btc_klines_1m(
     dates = pd.date_range(config.start_date, config.end_date)
     assert len(dates) > 0, "Got empty date range, please check your config."
     for date_str in dates.astype(str):
-        context.log.info(f"Processing {date_str}")
+        context.log.info(f"Processing {date_str}...")
         path = (
             f"data/binance/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-{date_str}.csv"
         )
+        # NOTE: manually materialize upstream when they are missing!
+        if not os.path.exists(path):
+            # https://docs.dagster.io/_apidocs/execution#dagster.materialize
+            context.log.info(
+                f"Upstream btc_klines_1m_daily {date_str} missing, materializing..."
+            )
+            materialize([btc_klines_1m_daily], partition_key=date_str)
+
         results.append(pd.read_csv(path, index_col=None, header=None))
     df = pd.concat(results, axis=0)
     df.columns = [

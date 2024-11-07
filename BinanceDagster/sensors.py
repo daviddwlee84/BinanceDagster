@@ -8,6 +8,8 @@ import datetime
 from .utilities import download_checksum_file
 
 
+# https://docs.dagster.io/_apidocs/assets#dagster.AutomationConditionSensorDefinition
+# https://docs.dagster.io/concepts/automation/declarative-automation/customizing-automation-conditions#arbitary-python-automationconditions
 @sensor(minimum_interval_seconds=86400)
 def binance_klines_1m_daily_sensor(context: SensorEvaluationContext) -> SensorResult:
     # Materialization happened in external system, but is recorded here
