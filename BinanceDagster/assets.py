@@ -15,6 +15,9 @@ from .utilities import (
 )
 from .partitions import daily_partition
 from .configs import AdhocRequestConfig
+import base64
+import plotly.graph_objects as go
+import plotly.io as pio
 
 # TODO: categorize assets into groups => maybe move to "asset" folder and assign group name by batch (i.e. load_assets_from_modules)
 
@@ -89,9 +92,66 @@ def adhoc_btc_klines_1m(
         path = (
             f"data/binance/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-{date_str}.csv"
         )
-        results.append(pd.read_csv(path, index_col=0, header=None))
+        results.append(pd.read_csv(path, index_col=None, header=None))
     df = pd.concat(results, axis=0)
-    df.to_csv(
-        f"data/adhoc/BTCUSDT-1m-{config.start_date}_{config.end_date}.csv", header=None
+    df.columns = [
+        "Open time",
+        "Open",
+        "High",
+        "Low",
+        "Close",
+        "Volume",
+        "Close time",
+        "Quote asset volume",
+        "Number of trades",
+        "Taker buy base asset volume",
+        "Taker buy quote asset volume",
+        "Ignore",
+    ]
+
+    # Convert time columns to datetime
+    df["Open time"] = pd.to_datetime(df["Open time"], unit="ms")
+    df["Close time"] = pd.to_datetime(df["Close time"], unit="ms")
+
+    # Generate candlestick chart using Plotly
+    fig = go.Figure(
+        data=[
+            go.Candlestick(
+                x=df["Open time"],
+                open=df["Open"],
+                high=df["High"],
+                low=df["Low"],
+                close=df["Close"],
+                increasing_line_color="green",
+                decreasing_line_color="red",
+            )
+        ]
     )
-    return MaterializeResult(metadata={"Number of records": MetadataValue.int(len(df))})
+    fig.update_layout(
+        title=f"BTCUSDT 1m Candlestick Chart ({config.start_date} to {config.end_date})",
+        xaxis_title="Time",
+        yaxis_title="Price",
+    )
+
+    # Save the chart as a PNG file
+    file_path = f"data/adhoc/BTCUSDT-1m-{config.start_date}_{config.end_date}.png"
+    pio.write_image(fig, file_path)
+
+    # Convert image to base64 and create markdown preview
+    with open(file_path, "rb") as image_file:
+        image_data = image_file.read()
+
+    base64_data = base64.b64encode(image_data).decode("utf-8")
+    md_content = f"![Candlestick Chart](data:image/png;base64,{base64_data})"
+
+    # Save the combined data
+    df.to_feather(
+        f"data/adhoc/BTCUSDT-1m-{config.start_date}_{config.end_date}.feather"
+    )
+
+    return MaterializeResult(
+        metadata={
+            "Number of records": MetadataValue.int(len(df)),
+            "preview": MetadataValue.md(md_content),
+        }
+    )

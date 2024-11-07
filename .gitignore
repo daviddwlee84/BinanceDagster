@@ -1,4 +1,6 @@
 data/**/*.csv
+data/**/*.feather
+data/**/*.png
 dagster/
 
 # Byte-compiled / optimized / DLL files

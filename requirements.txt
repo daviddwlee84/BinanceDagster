@@ -1,6 +1,8 @@
 dagster==1.8.13
 dagster-cloud==1.8.13
 pandas
+plotly
+kaleido
 # dev
 dagster-webserver==1.8.13
 pytest
