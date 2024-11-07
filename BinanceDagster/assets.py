@@ -1,4 +1,10 @@
-from dagster import asset, AssetExecutionContext, AssetSpec
+from dagster import (
+    asset,
+    AssetExecutionContext,
+    AssetSpec,
+    MaterializeResult,
+    MetadataValue,
+)
 import os
 import pandas as pd
 from .utilities import (
@@ -10,6 +16,7 @@ from .utilities import (
 from .partitions import daily_partition
 from .configs import AdhocRequestConfig
 
+# TODO: categorize assets into groups => maybe move to "asset" folder and assign group name by batch (i.e. load_assets_from_modules)
 
 # https://github.com/dagster-io/dagster/discussions/20054
 # https://github.com/dagster-io/dagster/discussions/18211
@@ -22,7 +29,7 @@ raw_btc_klines_1m_daily = AssetSpec(
 
 
 @asset(partitions_def=daily_partition, deps=[raw_btc_klines_1m_daily])
-def btc_klines_1m_daily(context: AssetExecutionContext) -> None:
+def btc_klines_1m_daily(context: AssetExecutionContext) -> MaterializeResult:
     """
     BTC 1-minute interval K-lines
 
@@ -62,11 +69,14 @@ def btc_klines_1m_daily(context: AssetExecutionContext) -> None:
             else:
                 context.log.warning("Checksum failed, retrying download...")
 
+    df = pd.read_csv(f"data/binance/{path}.csv", header=None)
+    return MaterializeResult(metadata={"Number of records": MetadataValue.int(len(df))})
+
 
 @asset(deps=["btc_klines_1m_daily"])
 def adhoc_btc_klines_1m(
     context: AssetExecutionContext, config: AdhocRequestConfig
-) -> None:
+) -> MaterializeResult:
     """
     This job will combine multiple daily BTC klines into one single file
     """
@@ -84,3 +94,4 @@ def adhoc_btc_klines_1m(
     df.to_csv(
         f"data/adhoc/BTCUSDT-1m-{config.start_date}_{config.end_date}.csv", header=None
     )
+    return MaterializeResult(metadata={"Number of records": MetadataValue.int(len(df))})
