@@ -1,5 +1,6 @@
 from dagster import asset, AssetExecutionContext
 import os
+import pandas as pd
 from .utilities import (
     download_checksum_file,
     download_file_to_memory,
@@ -7,6 +8,7 @@ from .utilities import (
     decompress_zip_in_memory,
 )
 from .partitions import daily_partition
+from .configs import AdhocRequestConfig
 
 
 @asset(partitions_def=daily_partition)
@@ -49,3 +51,26 @@ def btc_klines_1m_daily(context: AssetExecutionContext) -> None:
                 )
             else:
                 context.log.warning("Checksum failed, retrying download...")
+
+
+@asset(deps=["btc_klines_1m_daily"])
+def adhoc_btc_klines_1m(
+    context: AssetExecutionContext, config: AdhocRequestConfig
+) -> None:
+    """
+    This job will combine multiple daily BTC klines into one single file
+    """
+    results = []
+    context.log.info(f"BTCUSDT-1m-{config.start_date}_{config.end_date}")
+    dates = pd.date_range(config.start_date, config.end_date)
+    assert len(dates) > 0, "Got empty date range, please check your config."
+    for date_str in dates.astype(str):
+        context.log.info(f"Processing {date_str}")
+        path = (
+            f"data/binance/data/spot/daily/klines/BTCUSDT/1m/BTCUSDT-1m-{date_str}.csv"
+        )
+        results.append(pd.read_csv(path, index_col=0, header=None))
+    df = pd.concat(results, axis=0)
+    df.to_csv(
+        f"data/adhoc/BTCUSDT-1m-{config.start_date}_{config.end_date}.csv", header=None
+    )
